@@ -80,9 +80,23 @@ func handleMessages() {
 }
 
 func main() {
+	// Prompt for IP and Port
+	var ip, port string
+	fmt.Print("Enter the IP address to bind the server: ")
+	fmt.Scanln(&ip)
+	if ip == "" {
+		ip = "0.0.0.0" // Default to all available network interfaces
+	}
+
+	fmt.Print("Enter the port to listen on: ")
+	fmt.Scanln(&port)
+	if port == "" {
+		port = "8080" // Default port
+	}
 	http.HandleFunc("/ws", handleConnections)
 	go handleMessages()
 
-	fmt.Println("WebSocket server running on ws://localhost:8080/ws")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	serverAddr := fmt.Sprintf("%s:%s", ip, port)
+	fmt.Printf("WebSocket server starting on ws://%s\n", serverAddr)
+	log.Fatal(http.ListenAndServe(serverAddr, nil))
 }

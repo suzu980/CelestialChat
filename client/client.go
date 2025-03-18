@@ -10,8 +10,23 @@ import (
 )
 
 func main() {
+	// Prompt for IP and Port
+	var ip, port string
+	fmt.Print("Enter the IP address to bind the server: ")
+	fmt.Scanln(&ip)
+	if ip == "" {
+		ip = "0.0.0.0" // Default to all available network interfaces
+	}
+
+	fmt.Print("Enter the port to listen on: ")
+	fmt.Scanln(&port)
+	if port == "" {
+		port = "8080" // Default port
+	}
+	serverAddr := fmt.Sprintf("ws://%s:%s/ws", ip, port)
+
 	// Connect to the WebSocket server
-	conn, _, err := websocket.DefaultDialer.Dial("ws://localhost:8080/ws", nil)
+	conn, _, err := websocket.DefaultDialer.Dial(serverAddr, nil)
 	if err != nil {
 		log.Fatal("Connection error:", err)
 	}
@@ -28,7 +43,14 @@ func main() {
 		log.Fatal("Failed to send username:", err)
 	}
 
-	fmt.Println("Connected to chat as:", username)
+	fmt.Println("==========================================")
+	fmt.Println()
+	fmt.Println("✨ Celestial Chat")
+	fmt.Println("Connecting to:", serverAddr)
+	fmt.Println("Welcome,", username, "!")
+	fmt.Println()
+	fmt.Println("==========================================")
+	fmt.Println()
 	fmt.Println("Type messages and press Enter to send.")
 
 	// Goroutine to receive messages

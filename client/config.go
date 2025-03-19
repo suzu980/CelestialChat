@@ -63,7 +63,10 @@ func (m ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ip := m.form.GetString("ip")
 		port := m.form.GetString("port")
 		display_name := m.form.GetString("display_name")
-		chatScreen := ChatScreen(ip, port, display_name, m.width, m.height)
+		chatScreen, err := ChatScreen(ip, port, display_name, m.width, m.height)
+		if err != nil {
+			return m, nil
+		}
 		return RootScreen().SwitchScreen(&chatScreen)
 
 	}
@@ -72,10 +75,7 @@ func (m ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m ConfigModel) View() string {
 	if m.form.State == huh.StateCompleted {
-		ip := m.form.GetString("ip")
-		port := m.form.GetString("port")
-		display_name := m.form.GetString("display_name")
-		return fmt.Sprintf("Hello %s! You entered: %s:%s\nPress any key to exit.", display_name, ip, port)
+		return fmt.Sprintf("If you're seeing this screen, it means that connection doesn't exist or something weird error happened.\nWhat happened? I may not know ¯\\_(ツ)_/¯\n\nPress any key to exit.")
 	}
 	return m.form.View()
 }

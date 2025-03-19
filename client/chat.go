@@ -56,7 +56,9 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{{k.Quit}}
 }
 
-func ChatScreen(ip string, port string, display_name string, width int, height int) ChatModel {
+func ChatScreen(
+	ip string, port string, display_name string, width int, height int,
+) (ChatModel, error) {
 	var keys = keyMap{
 		Quit: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "Quit the program")),
 	}
@@ -74,14 +76,13 @@ func ChatScreen(ip string, port string, display_name string, width int, height i
 	serverURL := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%s", ip_, port_), Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
 	if err != nil {
-		fmt.Println("Error", err)
-		return ChatModel{err: err}
+		return ChatModel{err: err}, err
 	}
 	// Send name to server
 
 	if err := conn.WriteMessage(websocket.TextMessage, []byte(display_name)); err != nil {
 		fmt.Println("Failed to send username", err)
-		return ChatModel{err: err}
+		return ChatModel{err: err}, err
 	}
 	textarea := textarea.New()
 	textarea.Placeholder = fmt.Sprintf("Chatting as %s", display_name)
@@ -134,7 +135,7 @@ func ChatScreen(ip string, port string, display_name string, width int, height i
 		message_log:  init_message_log,
 		conn:         conn,
 	}
-	return chat_model
+	return chat_model, nil
 
 }
 

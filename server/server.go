@@ -48,7 +48,6 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	// Listen for messages
 	for {
 		_, msg, err := conn.ReadMessage()
-		log.Printf("'%s' message read.\n", msg)
 		if err != nil {
 			log.Printf("%s disconnected.\n", username)
 			break
@@ -69,7 +68,6 @@ func handleMessages() {
 	for {
 		msg := <-broadcast
 		mu.Lock()
-		log.Printf("'%s' sent.\n", msg)
 		for client := range clients {
 			err := client.WriteMessage(websocket.TextMessage, []byte(msg))
 			if err != nil {

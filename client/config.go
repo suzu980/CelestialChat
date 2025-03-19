@@ -38,8 +38,19 @@ func (m ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		currentWidth := msg.Width
+		currentHeight := msg.Height
+		if currentWidth <= 0 {
+			m.width = 3
+		} else {
+			m.width = currentWidth
+		}
+
+		if currentHeight <= 0 {
+			m.height = 3
+		} else {
+			m.height = currentHeight
+		}
 	}
 	form, cmd := m.form.Update((msg))
 	if f, ok := form.(*huh.Form); ok {

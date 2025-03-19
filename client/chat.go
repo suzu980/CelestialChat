@@ -172,8 +172,19 @@ func (m ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, listenForWSMessages(m.conn))
 		m.viewport.GotoBottom()
 	case tea.WindowSizeMsg:
-		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - m.chat_area.Height() - lipgloss.Height(gap) - lipgloss.Height(m.help.View(m.keys))
+		currentWidth := msg.Width
+		currentHeight := msg.Height - m.chat_area.Height() - lipgloss.Height(gap) - lipgloss.Height(m.help.View(m.keys))
+		if currentWidth <= 0 {
+			m.viewport.Width = 3
+		} else {
+			m.viewport.Width = currentWidth
+		}
+
+		if currentHeight <= 0 {
+			m.viewport.Height = 3
+		} else {
+			m.viewport.Height = currentHeight
+		}
 		m.chat_area.SetWidth(msg.Width)
 		if len(m.message_log) > 0 {
 			// Wrap content before setting it.

@@ -84,27 +84,40 @@ package main
 // }
 import (
 	"fmt"
-	"log"
+	"os"
 
-	"github.com/charmbracelet/huh"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
-type configModel struct {
+type RootModel struct {
+	model tea.Model
 }
 
-var (
-	ip           string
-	port         string
-	display_name string
-)
+func RootScreen() RootModel {
+	var rootModel tea.Model
+	configScreen := ConfigurationScreen()
+	rootModel = &configScreen
+	return (RootModel{model: rootModel})
+}
+func (m RootModel) Init() tea.Cmd {
+	return m.model.Init()
+}
+func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m.model.Update(msg)
+}
+func (m RootModel) View() string {
+	return m.model.View()
+}
+func (m RootModel) SwitchScreen(model tea.Model) (tea.Model, tea.Cmd) {
+	m.model = model
+	return m.model, m.model.Init()
+}
 
 func main() {
-	form := huh.NewForm(
-		huh.NewGroup(huh.NewInput().Title("IP").Value(&ip), huh.NewInput().Title("Port").Value(&port), huh.NewInput().Title("Name").Value(&display_name)),
-	)
-	err := form.Run()
-	if err != nil {
-		log.Fatal(err)
+	p := tea.NewProgram(RootScreen(), tea.WithMouseCellMotion())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Oh dear, something bad happened and it crashed: %v", err)
+		os.Exit(1)
+
 	}
-	fmt.Printf("\n%s %s %s", ip, port, display_name)
 }

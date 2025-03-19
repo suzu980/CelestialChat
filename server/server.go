@@ -42,24 +42,26 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	mu.Unlock()
 
 	// Broadcast join message
-	broadcast <- fmt.Sprintf("📢 %s has joined the chat!", username)
+	log.Printf("\n📢 %s has joined the chat!", username)
+	broadcast <- fmt.Sprintf("\033[33m\nA wild %s has joined the chat!\n\033[0m", username)
 
 	// Listen for messages
 	for {
 		_, msg, err := conn.ReadMessage()
+		log.Printf("'%s' message read.\n", msg)
 		if err != nil {
 			log.Printf("%s disconnected.\n", username)
 			break
 		}
 		// Broadcast message to all clients
-		broadcast <- fmt.Sprintf("%s: %s", username, string(msg))
+		broadcast <- fmt.Sprintf("%s", string(msg))
 	}
 
 	// Handle disconnect
 	mu.Lock()
 	delete(clients, conn)
 	mu.Unlock()
-	broadcast <- fmt.Sprintf("❌ %s has left the chat.", username)
+	broadcast <- fmt.Sprintf("\033[31m\nOh dear, %s has disconnected the chat.\n\033[0m", username)
 }
 
 // Handle broadcasting messages
@@ -67,6 +69,7 @@ func handleMessages() {
 	for {
 		msg := <-broadcast
 		mu.Lock()
+		log.Printf("'%s' sent.\n", msg)
 		for client := range clients {
 			err := client.WriteMessage(websocket.TextMessage, []byte(msg))
 			if err != nil {

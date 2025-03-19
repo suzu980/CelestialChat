@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -10,10 +11,14 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/gorilla/websocket"
 )
 
 type keyMap struct {
 	Quit key.Binding
+}
+type websocketMsg struct {
+	content string
 }
 
 type ChatModel struct {
@@ -28,6 +33,20 @@ type ChatModel struct {
 
 	sender_style lipgloss.Style
 	message_log  []string
+
+	conn *websocket.Conn
+
+	err error
+}
+
+func listenForWSMessages(conn *websocket.Conn) tea.Cmd {
+	return func() tea.Msg {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			return tea.Quit
+		}
+		return websocketMsg{content: string(message)}
+	}
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
@@ -40,6 +59,29 @@ func (k keyMap) FullHelp() [][]key.Binding {
 func ChatScreen(ip string, port string, display_name string) ChatModel {
 	var keys = keyMap{
 		Quit: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "Quit the program")),
+	}
+	var ip_, port_ string
+	if ip == "" {
+		ip_ = "0.0.0.0"
+	} else {
+		ip_ = ip
+	}
+	if port == "" {
+		port_ = "6969"
+	} else {
+		port_ = port
+	}
+	serverURL := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%s", ip_, port_), Path: "/ws"}
+	conn, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
+	if err != nil {
+		fmt.Println("Error", err)
+		return ChatModel{err: err}
+	}
+	// Send name to server
+
+	if err := conn.WriteMessage(websocket.TextMessage, []byte(display_name)); err != nil {
+		fmt.Println("Failed to send username", err)
+		return ChatModel{err: err}
 	}
 	textarea := textarea.New()
 	textarea.Placeholder = fmt.Sprintf("Chatting as %s", display_name)
@@ -65,7 +107,11 @@ func ChatScreen(ip string, port string, display_name string) ChatModel {
 	}
 	vp.MouseWheelEnabled = true
 
-	return ChatModel{
+	// Welcome message
+	welcome := fmt.Sprintf("Welcome to %s", lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Render("✨ Celestial Chat ✨"))
+	info := lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Render("Hope you enjoy your stay here <3")
+
+	chat_model := ChatModel{
 		ip:           ip,
 		port:         port,
 		display_name: display_name,
@@ -73,17 +119,33 @@ func ChatScreen(ip string, port string, display_name string) ChatModel {
 		help:         help.New(),
 		chat_area:    textarea,
 		viewport:     vp,
-		sender_style: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
-		message_log:  []string{},
+		sender_style: lipgloss.NewStyle().Foreground(lipgloss.Color("2")),
+		message_log:  []string{"", welcome, "", info, "", ""},
+		conn:         conn,
 	}
+	return chat_model
+
 }
 
 const gap = "\n\n"
 
 func (m ChatModel) Init() tea.Cmd {
-	return tea.Batch(textarea.Blink)
+	return tea.Batch(textarea.Blink, listenForWSMessages(m.conn))
 }
 func (m ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	if m.err != nil {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			default:
+				if m.conn != nil {
+					m.conn.Close()
+				}
+				return m, tea.Quit
+			}
+		}
+	}
 	var (
 		helpCmd tea.Cmd
 		chatCmd tea.Cmd
@@ -92,8 +154,15 @@ func (m ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.help, helpCmd = m.help.Update(msg)
 	m.chat_area, chatCmd = m.chat_area.Update(msg)
 	m.viewport, vpCmd = m.viewport.Update(msg)
+	m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.message_log, "\n")))
 	//Handle window resize
 	switch msg := msg.(type) {
+	case websocketMsg:
+		m.message_log = append(m.message_log, msg.content)
+		m.viewport.SetContent(strings.Join(m.message_log, "\n"))
+		m.viewport.GotoBottom()
+		// Restart the websocket
+		cmds = append(cmds, listenForWSMessages(m.conn))
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - m.chat_area.Height() - lipgloss.Height(gap) - lipgloss.Height(m.help.View(m.keys))
@@ -106,24 +175,31 @@ func (m ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
+			if m.conn != nil {
+				m.conn.Close()
+			}
 			return m, tea.Quit
 		case tea.KeyEnter:
-			m.message_log = append(m.message_log, m.sender_style.Render(fmt.Sprintf("%s: ", m.display_name))+m.chat_area.Value())
-			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.message_log, "\n")))
+			written_message := m.sender_style.Render(fmt.Sprintf("%s: ", m.display_name)) + m.chat_area.Value()
+			if err := m.conn.WriteMessage(websocket.TextMessage, []byte(written_message)); err != nil {
+				m.err = err
+			}
 			m.chat_area.Reset()
 			m.viewport.GotoBottom()
 		}
 	}
-	return m, tea.Batch(vpCmd, helpCmd, chatCmd)
+	cmds = append(cmds, helpCmd, chatCmd, vpCmd)
+	return m, tea.Batch(cmds...)
 }
 func (m ChatModel) View() string {
-	// ip := m.ip
-	// port := m.port
-	// display_name := m.display_name
+	if m.err != nil {
+		if m.conn != nil {
+			m.conn.Close()
+		}
+		return fmt.Sprintf("\nAn error has occured:\n%s\nPress any key to exit.", m.err)
+	}
 	chatlog_view := m.viewport.View()
 	help_view := m.help.View(m.keys)
 	chat_area := m.chat_area.View()
-	// return fmt.Sprintf("Hello %s! Attempting to connect to server: ws://%s:%s/ws\n", display_name, ip, port)
 	return fmt.Sprintf("%s%s\n%s\n%s", chatlog_view, gap, chat_area, help_view)
-	// return fmt.Sprintf("Hello %s! Attempting to connect to server: ws://[REDACTED]:%s/ws\n%s\n%s", display_name, port, chat_area, help_view)
 }

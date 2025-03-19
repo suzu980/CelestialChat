@@ -83,7 +83,6 @@ func ChatScreen(
 		}
 		return ChatModel{err: err}, nil
 	}
-	defer conn.Close()
 	// Send name to server
 
 	if err := conn.WriteMessage(websocket.TextMessage, []byte(display_name)); err != nil {

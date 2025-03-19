@@ -94,7 +94,7 @@ func main() {
 	fmt.Print("Enter the port to listen on: ")
 	fmt.Scanln(&port)
 	if port == "" {
-		port = "8080" // Default port
+		port = "6969" // Default port
 	}
 	http.HandleFunc("/ws", handleConnections)
 	go handleMessages()

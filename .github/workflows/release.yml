@@ -25,19 +25,26 @@ jobs:
 
       - name: Build Server
         run: |
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o server-${{ matrix.os }}-${{ matrix.arch }} ./server/server.go
-
+          if [ "${{ matrix.os }}" == "windows" ]; then
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o server-${{ matrix.os }}-${{ matrix.arch }}.exe ./server/server.go
+          else
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o server-${{ matrix.os }}-${{ matrix.arch }} ./server/server.go
+          fi
       - name: Build Client
         run: |
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o client-${{ matrix.os }}-${{ matrix.arch }} ./client/*
+          if [ "${{ matrix.os }}" == "windows" ]; then
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o client-${{ matrix.os }}-${{ matrix.arch }}.exe ./client/*
+          else
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o client-${{ matrix.os }}-${{ matrix.arch }} ./client/*
+          fi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            server-${{ matrix.os }}-${{ matrix.arch }}
-            client-${{ matrix.os }}-${{ matrix.arch }}
+            server-${{ matrix.os }}-${{ matrix.arch }}*
+            client-${{ matrix.os }}-${{ matrix.arch }}*
 
   release:
     name: Create GitHub Release

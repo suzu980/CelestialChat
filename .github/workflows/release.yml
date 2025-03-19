@@ -26,16 +26,16 @@ jobs:
       - name: Build Server
         run: |
           if [ "${{ matrix.os }}" == "windows" ]; then
-            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o server-${{ matrix.os }}-${{ matrix.arch }}.exe ./server/server.go
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o celestial-chat-server-${{ matrix.os }}-${{ matrix.arch }}.exe ./server/server.go
           else
-            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o server-${{ matrix.os }}-${{ matrix.arch }} ./server/server.go
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o celestial-chat-server-${{ matrix.os }}-${{ matrix.arch }} ./server/server.go
           fi
       - name: Build Client
         run: |
           if [ "${{ matrix.os }}" == "windows" ]; then
-            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o client-${{ matrix.os }}-${{ matrix.arch }}.exe ./client/*
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o celestial-chat-client-${{ matrix.os }}-${{ matrix.arch }}.exe ./client/*
           else
-            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o client-${{ matrix.os }}-${{ matrix.arch }} ./client/*
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o celestial-chat-client-${{ matrix.os }}-${{ matrix.arch }} ./client/*
           fi
 
       - name: Upload Artifacts
@@ -43,8 +43,8 @@ jobs:
         with:
           name: binaries-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            server-${{ matrix.os }}-${{ matrix.arch }}*
-            client-${{ matrix.os }}-${{ matrix.arch }}*
+            celestial-chat-server-${{ matrix.os }}-${{ matrix.arch }}*
+            celestial-chat-client-${{ matrix.os }}-${{ matrix.arch }}*
 
   release:
     name: Create GitHub Release

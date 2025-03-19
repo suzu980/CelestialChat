@@ -167,7 +167,7 @@ func (m ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case websocketMsg:
 		m.message_log = append(m.message_log, msg.content)
-		m.viewport.SetContent(strings.Join(m.message_log, "\n"))
+		m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.message_log, "\n")))
 		// Restart the websocket
 		cmds = append(cmds, listenForWSMessages(m.conn))
 		m.viewport.GotoBottom()

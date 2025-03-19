@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -59,9 +60,6 @@ func (k keyMap) FullHelp() [][]key.Binding {
 func ChatScreen(
 	ip string, port string, display_name string, width int, height int,
 ) (ChatModel, error) {
-	var keys = keyMap{
-		Quit: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "Quit the program")),
-	}
 	var ip_, port_ string
 	if ip == "" {
 		ip_ = "0.0.0.0"
@@ -74,15 +72,26 @@ func ChatScreen(
 		port_ = port
 	}
 	serverURL := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%s", ip_, port_), Path: "/ws"}
-	conn, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
-	if err != nil {
-		return ChatModel{err: err}, err
+
+	dialer := &websocket.Dialer{
+		HandshakeTimeout: 3 * time.Second,
 	}
+	conn, _, err := dialer.Dial(serverURL.String(), nil)
+	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
+		return ChatModel{err: err}, nil
+	}
+	defer conn.Close()
 	// Send name to server
 
 	if err := conn.WriteMessage(websocket.TextMessage, []byte(display_name)); err != nil {
 		fmt.Println("Failed to send username", err)
-		return ChatModel{err: err}, err
+		return ChatModel{err: err}, nil
+	}
+	var keys = keyMap{
+		Quit: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "Quit the program")),
 	}
 	textarea := textarea.New()
 	textarea.Placeholder = fmt.Sprintf("Chatting as %s", display_name)
@@ -142,6 +151,9 @@ func ChatScreen(
 const gap = "\n\n"
 
 func (m ChatModel) Init() tea.Cmd {
+	if m.err != nil {
+		return nil
+	}
 	return tea.Batch(textarea.Blink, listenForWSMessages(m.conn))
 }
 func (m ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

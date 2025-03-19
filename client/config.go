@@ -57,14 +57,15 @@ func (m ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.form = f
 	}
 	if m.form.State == huh.StateCompleted {
-		if _, ok := msg.(tea.KeyMsg); ok {
-			return m, tea.Quit
-		}
 		ip := m.form.GetString("ip")
 		port := m.form.GetString("port")
 		display_name := m.form.GetString("display_name")
 		chatScreen, err := ChatScreen(ip, port, display_name, m.width, m.height)
 		if err != nil {
+
+			if _, ok := msg.(tea.KeyMsg); ok {
+				return m, tea.Quit
+			}
 			return m, nil
 		}
 		return RootScreen().SwitchScreen(&chatScreen)

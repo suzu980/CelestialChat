@@ -12,13 +12,17 @@ type ConfigModel struct {
 	ip           string
 	port         string
 	display_name string
+	width        int
+	height       int
 }
 
 func ConfigurationScreen() ConfigModel {
 	return ConfigModel{
 		form: huh.NewForm(
-			huh.NewGroup(huh.NewInput().Title("IP").Key("ip"), huh.NewInput().Title("Port").Key("port"), huh.NewInput().Title("Name").Key("display_name")),
+			huh.NewGroup(huh.NewInput().Title("IP address to connect to: (Defaults to: localhost)").Key("ip"), huh.NewInput().Title("Port: (Defaults to: 6969 *nice*)").Key("port"), huh.NewInput().Title("Your display Name").Key("display_name")),
 		),
+		width:  30,
+		height: 3,
 	}
 }
 func (m ConfigModel) Init() tea.Cmd {
@@ -33,6 +37,9 @@ func (m ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	}
 	form, cmd := m.form.Update((msg))
 	if f, ok := form.(*huh.Form); ok {
@@ -45,7 +52,7 @@ func (m ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ip := m.form.GetString("ip")
 		port := m.form.GetString("port")
 		display_name := m.form.GetString("display_name")
-		chatScreen := ChatScreen(ip, port, display_name)
+		chatScreen := ChatScreen(ip, port, display_name, m.width, m.height)
 		return RootScreen().SwitchScreen(&chatScreen)
 
 	}

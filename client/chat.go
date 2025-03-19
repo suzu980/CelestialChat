@@ -56,7 +56,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{{k.Quit}}
 }
 
-func ChatScreen(ip string, port string, display_name string) ChatModel {
+func ChatScreen(ip string, port string, display_name string, width int, height int) ChatModel {
 	var keys = keyMap{
 		Quit: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "Quit the program")),
 	}
@@ -111,6 +111,17 @@ func ChatScreen(ip string, port string, display_name string) ChatModel {
 	welcome := fmt.Sprintf("Welcome to %s", lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Render("✨ Celestial Chat ✨"))
 	info := lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Render("Hope you enjoy your stay here <3")
 
+	h := help.New()
+	init_message_log := []string{"", welcome, "", info, "", ""}
+
+	vp.Width = width
+	vp.Height = height - textarea.Height() - lipgloss.Height(gap) - lipgloss.Height(h.View(keys))
+	textarea.SetWidth(width)
+	if len(init_message_log) > 0 {
+		// Wrap content before setting it.
+		vp.SetContent(lipgloss.NewStyle().Width(vp.Width).Render(strings.Join(init_message_log, "\n")))
+	}
+	vp.GotoBottom()
 	chat_model := ChatModel{
 		ip:           ip,
 		port:         port,
@@ -120,7 +131,7 @@ func ChatScreen(ip string, port string, display_name string) ChatModel {
 		chat_area:    textarea,
 		viewport:     vp,
 		sender_style: lipgloss.NewStyle().Foreground(lipgloss.Color("2")),
-		message_log:  []string{"", welcome, "", info, "", ""},
+		message_log:  init_message_log,
 		conn:         conn,
 	}
 	return chat_model
@@ -151,18 +162,15 @@ func (m ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		chatCmd tea.Cmd
 		vpCmd   tea.Cmd
 	)
-	m.help, helpCmd = m.help.Update(msg)
-	m.chat_area, chatCmd = m.chat_area.Update(msg)
-	m.viewport, vpCmd = m.viewport.Update(msg)
 	m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.message_log, "\n")))
 	//Handle window resize
 	switch msg := msg.(type) {
 	case websocketMsg:
 		m.message_log = append(m.message_log, msg.content)
 		m.viewport.SetContent(strings.Join(m.message_log, "\n"))
-		m.viewport.GotoBottom()
 		// Restart the websocket
 		cmds = append(cmds, listenForWSMessages(m.conn))
+		m.viewport.GotoBottom()
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - m.chat_area.Height() - lipgloss.Height(gap) - lipgloss.Height(m.help.View(m.keys))
@@ -188,6 +196,9 @@ func (m ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.GotoBottom()
 		}
 	}
+	m.help, helpCmd = m.help.Update(msg)
+	m.chat_area, chatCmd = m.chat_area.Update(msg)
+	m.viewport, vpCmd = m.viewport.Update(msg)
 	cmds = append(cmds, helpCmd, chatCmd, vpCmd)
 	return m, tea.Batch(cmds...)
 }
